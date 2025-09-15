@@ -50,7 +50,7 @@ func CreateStock(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&stock)
 
 	if err != nil {
-		log.Fatal("unable to decode the request body. %v", err)
+		log.Fatalf("unable to decode the request body. %v", err)
 	}
 
 	insertID := insertStock(stock)
@@ -131,7 +131,7 @@ func UpdateStock(w http.ResponseWriter, r *http.Request) {
 func DeleteStock(w http.ResponseWriter, r *http.Request) {
 
 	params := mux.Vars(r)
-	id, err := strconv.ParseInt(params["id"])
+	id, err := strconv.Atoi(params["id"])
 
 	if err != nil {
 		log.Fatalf("unable to convert string to int %v", err)
@@ -163,6 +163,8 @@ func insertStock(stock models.Stock) int64 {
 	}
 
 	fmt.Sprintf("Inserted a single record %v", id)
+
+	return id
 }
 
 func getStock(id int64) (models.Stock, error) {
@@ -193,12 +195,80 @@ func getStock(id int64) (models.Stock, error) {
 
 func getAllStocks() ([]models.Stock, error) {
 
+	db := createConnection()
+
+	defer db.Close()
+	var stocks []models.Stock
+
+	sqlStatement := `SELECT * FROM stocks`
+
+	rows, err := db.Query(sqlStatement)
+
+	if err != nil {
+		log.Fatalf("unable to execute query, %v", err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var stock models.Stock
+
+		err := rows.Scan(&stock.StockID, &stock.Name, &stock.Price, &stock.Company)
+
+		if err != nil {
+			log.Fatalf("unable to scan row %v", err)
+		}
+
+		stocks = append(stocks, stock)
+
+	}
+
+	return stocks, err
+
 }
 
 func updateStock(id int64, stock models.Stock) int64 {
 
+	db := createConnection()
+
+	defer db.Close()
+
+	sqlStatement := `UPDATE stocks and set name=$2, price=$3, company=$4 where stocksid=$1`
+
+	res, err := db.Exec(sqlStatement, id, stock.Name, stock.Price, stock.Company)
+
+	if err != nil {
+		log.Fatalf("unable to execute query, %v", err)
+	}
+
+	rowsAffected, err := res.RowsAffected()
+
+	if err != nil {
+		log.Fatalf("error while checking the affected rows %v", err)
+	}
+
+	fmt.Printf("Total rows/records affected %v", rowsAffected)
+	return rowsAffected
 }
 
 func deleteStock(id int64) int64 {
 
+	db := createConnection()
+
+	defer db.Close()
+
+	sqlStatement := `DELETE  FROM stocks where stocksid=$1`
+
+	res, err := db.Exec(sqlStatement, id)
+	if err != nil {
+		log.Fatalf("unable to execute query, %v", err)
+	}
+
+	rowsAffected, err := res.RowsAffected()
+
+	if err != nil {
+		log.Fatalf("error while checking the affected rows %v", err)
+	}
+	fmt.Printf("Total rows/records affected %v", rowsAffected)
+	return rowsAffected
 }
