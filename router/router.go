@@ -1,8 +1,9 @@
 package router
 
 import (
-	"github.com/gorilla/mux"
 	"go-ps/middleware"
+
+	"github.com/gorilla/mux"
 )
 
 func Router() *mux.Router {
